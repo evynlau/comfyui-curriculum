@@ -1,0 +1,88 @@
+{
+  "103": {
+    "inputs": {
+      "vae_name": "qwen_image_vae.safetensors"
+    },
+    "class_type": "VAELoader"
+  },
+  "104": {
+    "inputs": {
+      "clip_name": "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+      "type": "qwen_image",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader"
+  },
+  "105": {
+    "inputs": {
+      "unet_name": "qwen_image_2512_fp8_e4m3fn.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader"
+  },
+  "107": {
+    "inputs": {
+      "width": 1328,
+      "height": 1328,
+      "batch_size": 1
+    },
+    "class_type": "EmptySD3LatentImage"
+  },
+  "108": {
+    "inputs": {
+      "text": "一只穿着宇航服的橘猫，漂浮在太空中，背景是蓝色地球，科幻风格，高清细节",
+      "clip": ["104", 0]
+    },
+    "class_type": "CLIPTextEncode"
+  },
+  "114": {
+    "inputs": {
+      "lora_name": "Wuli-Qwen-Image-2512-Turbo-LoRA-2steps-V1.0-bf16.safetensors",
+      "strength_model": 1,
+      "model": ["105", 0]
+    },
+    "class_type": "LoraLoaderModelOnly"
+  },
+  "110": {
+    "inputs": {
+      "shift": 3,
+      "model": ["114", 0]
+    },
+    "class_type": "ModelSamplingAuraFlow"
+  },
+  "128": {
+    "inputs": {
+      "conditioning": ["108", 0]
+    },
+    "class_type": "ConditioningZeroOut"
+  },
+  "106": {
+    "inputs": {
+      "seed": 9527000,
+      "steps": 8,
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "denoise": 1,
+      "model": ["110", 0],
+      "positive": ["108", 0],
+      "negative": ["128", 0],
+      "latent_image": ["107", 0]
+    },
+    "class_type": "KSampler"
+  },
+  "109": {
+    "inputs": {
+      "samples": ["106", 0],
+      "vae": ["103", 0]
+    },
+    "class_type": "VAEDecode"
+  },
+  "123": {
+    "inputs": {
+      "filename_prefix": "zimage_result",
+      "images": ["109", 0]
+    },
+    "class_type": "SaveImage"
+  }
+}

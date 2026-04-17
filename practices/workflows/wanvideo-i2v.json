@@ -1,0 +1,178 @@
+{
+  "name": "WanVideo 2.2 I2V 图生视频",
+  "description": "WanVideo 2.2 图生视频工作流（底层节点版，截至2025-04暂不可用）",
+  "version": "1.0.0",
+  "nodes": [
+    {
+      "id": "10",
+      "type": "LoadImage",
+      "inputs": {
+        "image": "keyframe.png"
+      }
+    },
+    {
+      "id": "71",
+      "type": "ImageResizeKJv2",
+      "inputs": {
+        "image": ["10", 0],
+        "width": 848,
+        "height": 480,
+        "upscale_method": "bilinear",
+        "keep_proportion": "resize",
+        "pad_color": "0, 0, 0",
+        "crop_position": "center",
+        "divisible_by": 1
+      }
+    },
+    {
+      "id": "38",
+      "type": "WanVideoVAELoader",
+      "inputs": {
+        "model_name": "Wan2_2_VAE_bf16.safetensors",
+        "precision": "bf16"
+      }
+    },
+    {
+      "id": "70",
+      "type": "WanVideoEncode",
+      "inputs": {
+        "vae": ["38", 0],
+        "image": ["71", 0],
+        "enable_vae_tiling": false,
+        "tile_x": 272,
+        "tile_y": 272,
+        "tile_stride_x": 144,
+        "tile_stride_y": 128
+      }
+    },
+    {
+      "id": "78",
+      "type": "WanVideoEmptyEmbeds",
+      "inputs": {
+        "width": 848,
+        "height": 480,
+        "num_frames": 121,
+        "extra_latents": ["70", 0]
+      }
+    },
+    {
+      "id": "22",
+      "type": "WanVideoModelLoader",
+      "inputs": {
+        "model": "Wan2_2-TI2V-5B-Turbo_fp16.safetensors",
+        "base_precision": "fp16_fast",
+        "quantization": "disabled",
+        "load_device": "offload_device"
+      }
+    },
+    {
+      "id": "35",
+      "type": "WanVideoTorchCompileSettings",
+      "inputs": {
+        "backend": "inductor",
+        "fullgraph": false,
+        "mode": "default",
+        "dynamic": false,
+        "dynamo_cache_size_limit": 64,
+        "compile_transformer_blocks_only": true
+      }
+    },
+    {
+      "id": "11",
+      "type": "LoadWanVideoT5TextEncoder",
+      "inputs": {
+        "model_name": "umt5-xxl-enc-bf16.safetensors",
+        "precision": "bf16"
+      }
+    },
+    {
+      "id": "16",
+      "type": "WanVideoTextEncode",
+      "inputs": {
+        "positive_prompt": "正向提示词：描述视频内容",
+        "negative_prompt": "",
+        "t5": ["11", 0],
+        "force_offload": true
+      }
+    },
+    {
+      "id": "91",
+      "type": "WanVideoSLG",
+      "inputs": {
+        "blocks": "7,8,9",
+        "start_percent": 0.1,
+        "end_percent": 0.7
+      }
+    },
+    {
+      "id": "94",
+      "type": "WanVideoEasyCache",
+      "inputs": {
+        "easycache_thresh": 0.015,
+        "start_step": 10,
+        "end_step": -1,
+        "cache_device": "offload_device"
+      }
+    },
+    {
+      "id": "90",
+      "type": "WanVideoExperimentalArgs",
+      "inputs": {
+        "video_attention_split_steps": "",
+        "cfg_zero_star": true,
+        "use_zero_init": false,
+        "zero_star_steps": 0,
+        "use_fresca": false,
+        "fresca_scale_low": 1.0,
+        "fresca_scale_high": 1.25,
+        "fresca_freq_cutoff": 20,
+        "use_tcfg": true,
+        "bidirectional_sampling": false,
+        "temporal_score_rescaling": false,
+        "tsr_k": 0.0,
+        "tsr_sigma": 0.0,
+        "raag_alpha": 0
+      }
+    },
+    {
+      "id": "27",
+      "type": "WanVideoSampler",
+      "inputs": {
+        "model": ["22", 0],
+        "image_embeds": ["78", 0],
+        "text_embeds": ["16", 0],
+        "steps": 30,
+        "cfg": 5.0,
+        "shift": 8.0,
+        "seed": 12345,
+        "force_offload": true,
+        "scheduler": "flowmatch_pusa",
+        "riflex_freq_index": 0,
+        "slg_args": ["91", 0],
+        "cache_args": ["94", 0],
+        "experimental_args": ["90", 0]
+      }
+    },
+    {
+      "id": "28",
+      "type": "WanVideoDecode",
+      "inputs": {
+        "vae": ["38", 0],
+        "samples": ["27", 0],
+        "enable_vae_tiling": false,
+        "tile_x": 272,
+        "tile_y": 272,
+        "tile_stride_x": 144,
+        "tile_stride_y": 128
+      }
+    },
+    {
+      "id": "9",
+      "type": "SaveImage",
+      "inputs": {
+        "filename_prefix": "wanvideo_output",
+        "images": ["28", 0]
+      }
+    }
+  ]
+}
